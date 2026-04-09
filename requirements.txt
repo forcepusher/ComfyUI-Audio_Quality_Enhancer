@@ -3,6 +3,7 @@ torch
 numpy
 soundfile
 scipy
+diffq
 
 # Audio processing libraries
 librosa
