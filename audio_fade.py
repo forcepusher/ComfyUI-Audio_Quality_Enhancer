@@ -1,7 +1,6 @@
 """
-SoX Audio Fade In/Out Effect for ComfyUI
-Applies fade-in and fade-out envelopes using the SoX 'fade' effect.
-Cross-platform compatible for Windows and Linux/WSL.
+SoX Audio Fade In/Out Effect for ComfyUI.
+Uses embedded SoX binary managed by sox_utils.
 """
 
 import os
@@ -11,7 +10,8 @@ import torch
 import subprocess
 import soundfile as sf
 import shutil
-import platform
+
+from .sox_utils import ensure_sox
 
 
 class AudioFadeEffect:
@@ -32,11 +32,6 @@ class AudioFadeEffect:
 
     @classmethod
     def INPUT_TYPES(cls):
-        if platform.system() == "Windows":
-            default_sox_path = "C:\\Program Files (x86)\\sox-14-4-2\\sox.exe"
-        else:
-            default_sox_path = "sox"
-
         return {
             "required": {
                 "audio": ("AUDIO",),
@@ -64,7 +59,6 @@ class AudioFadeEffect:
                 ),
             },
             "optional": {
-                "sox_path": ("STRING", {"default": default_sox_path}),
                 "fade_type": (cls.FADE_TYPES, {"default": "linear"}),
             },
         }
@@ -74,55 +68,13 @@ class AudioFadeEffect:
     FUNCTION = "process_audio"
     CATEGORY = "audio/effects"
 
-    def find_sox_executable(self, provided_path):
-        """Find the SoX executable on different platforms."""
-        if os.path.exists(provided_path) and os.access(provided_path, os.X_OK):
-            return provided_path
-
-        if platform.system() != "Windows":
-            try:
-                sox_path = subprocess.check_output(
-                    ["which", "sox"], text=True
-                ).strip()
-                if sox_path:
-                    print(f"Found SoX at: {sox_path}")
-                    return sox_path
-            except (subprocess.SubprocessError, FileNotFoundError):
-                pass
-
-            linux_paths = ["/usr/bin/sox", "/usr/local/bin/sox", "/bin/sox"]
-            for path in linux_paths:
-                if os.path.exists(path) and os.access(path, os.X_OK):
-                    print(f"Found SoX at: {path}")
-                    return path
-
-            if provided_path == "sox":
-                return provided_path
-        else:
-            windows_paths = [
-                "C:\\Program Files (x86)\\sox-14-4-2\\sox.exe",
-                "C:\\Program Files\\sox-14-4-2\\sox.exe",
-                "C:\\Program Files (x86)\\sox-14.4.2\\sox.exe",
-                "C:\\Program Files\\sox-14.4.2\\sox.exe",
-                "C:\\Program Files (x86)\\sox\\sox.exe",
-                "C:\\Program Files\\sox\\sox.exe",
-            ]
-            for path in windows_paths:
-                if os.path.exists(path):
-                    print(f"Found SoX at: {path}")
-                    return path
-
-        return None
-
     def process_audio(
         self,
         audio,
         fade_in_duration=0.0,
         fade_out_duration=0.0,
-        sox_path=None,
         fade_type="linear",
     ):
-        """Apply fade-in and/or fade-out to audio using SoX."""
         if audio is None:
             print("No audio data to process")
             return (None,)
@@ -131,26 +83,7 @@ class AudioFadeEffect:
             print("No fade effect to apply, returning original audio")
             return (audio,)
 
-        if sox_path is None:
-            if platform.system() == "Windows":
-                sox_path = "C:\\Program Files (x86)\\sox-14-4-2\\sox.exe"
-            else:
-                sox_path = "sox"
-
-        print(f"Trying to find SoX at: {sox_path}")
-        sox_executable = self.find_sox_executable(sox_path)
-
-        if not sox_executable:
-            print("SoX executable not found. Please install SoX:")
-            if platform.system() == "Windows":
-                print(
-                    "- Windows: Download and install from https://sourceforge.net/projects/sox/"
-                )
-                print("- Then provide the correct path to sox.exe")
-            else:
-                print("- Linux/WSL: Run 'sudo apt-get install sox'")
-            return (audio,)
-
+        sox_executable = ensure_sox()
         print(f"Using SoX executable: {sox_executable}")
 
         try:
@@ -171,29 +104,28 @@ class AudioFadeEffect:
             print(f"- Fade in: {fade_in_duration}s")
             print(f"- Fade out: {fade_out_duration}s")
 
-            temp_dir = tempfile.mkdtemp(prefix="sox_fade_")
+            temp_dir = tempfile.mkdtemp(prefix="slopaudio_fade_")
 
             try:
                 input_path = os.path.join(temp_dir, "input.wav")
                 output_path = os.path.join(temp_dir, "output.wav")
 
-                print(f"Writing input audio to {input_path}")
                 sf.write(input_path, audio_np, sample_rate)
 
                 if not os.path.exists(input_path) or os.path.getsize(input_path) == 0:
                     print("Failed to write input audio file")
                     return (audio,)
 
-                # SoX fade syntax: fade [type] fade-in-length [stop-position [fade-out-length]]
-                # stop-position of 0 means process to end of file
-                sox_cmd = [sox_executable, input_path, output_path]
-                sox_cmd.extend([
+                sox_cmd = [
+                    sox_executable,
+                    input_path,
+                    output_path,
                     "fade",
                     fade_code,
                     str(fade_in_duration),
                     "0",
                     str(fade_out_duration),
-                ])
+                ]
 
                 print("Executing:", " ".join(sox_cmd))
 
@@ -204,31 +136,22 @@ class AudioFadeEffect:
                     text=True,
                 )
 
-                if process.stdout and len(process.stdout.strip()) > 0:
+                if process.stdout and process.stdout.strip():
                     print("SoX stdout:", process.stdout)
-                if process.stderr and len(process.stderr.strip()) > 0:
+                if process.stderr and process.stderr.strip():
                     print("SoX stderr:", process.stderr)
 
                 if process.returncode != 0:
-                    print(
-                        f"SoX command failed with return code {process.returncode}"
-                    )
+                    print(f"SoX command failed with return code {process.returncode}")
                     return (audio,)
 
-                if not os.path.exists(output_path):
-                    print("Output file does not exist")
+                if not os.path.exists(output_path) or os.path.getsize(output_path) == 0:
+                    print("SoX produced no output file")
                     return (audio,)
-
-                if os.path.getsize(output_path) == 0:
-                    print("Output file is empty")
-                    return (audio,)
-
-                print(f"Reading processed audio from {output_path}")
 
                 processed_audio, new_sample_rate = sf.read(output_path)
 
                 processed_tensor = torch.tensor(processed_audio.astype(np.float32))
-
                 if processed_tensor.dim() == 1:
                     processed_tensor = processed_tensor.unsqueeze(0)
                 if processed_tensor.dim() == 2:
@@ -236,17 +159,14 @@ class AudioFadeEffect:
 
                 print(f"Processed audio shape: {processed_tensor.shape}")
 
-                result_audio = {
+                return ({
                     "waveform": processed_tensor,
                     "sample_rate": new_sample_rate,
-                }
-
-                return (result_audio,)
+                },)
 
             finally:
                 try:
                     shutil.rmtree(temp_dir)
-                    print(f"Cleaned up temporary directory: {temp_dir}")
                 except Exception as e:
                     print(f"Error cleaning up temporary files: {e}")
 

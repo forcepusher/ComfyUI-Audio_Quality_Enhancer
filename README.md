@@ -11,7 +11,7 @@ This extension adds advanced audio processing capabilities to ComfyUI with profe
 
 ## Features
 
-### 🎛️ AI Audio Effects Node
+### AI Audio Effects Node
 - **Pitch Shifting**: Adjust pitch from -12 to +12 semitones
 - **Speed Adjustment**: Modify playback speed from 0.5x to 2.0x
 - **Volume Control**: Professional gain control with anti-clipping protection
@@ -20,7 +20,7 @@ This extension adds advanced audio processing capabilities to ComfyUI with profe
 - **Echo**: Configurable delay and decay for spatial effects
 - **Cross-platform**: Works on Windows, Linux/WSL, and macOS using SoX
 
-### 🔊 AI Audio Enhancer Pro Node
+### AI Audio Enhancer Pro Node
 - **Source Separation**: Powered by Demucs to enhance specific audio elements
 - **Targeted Enhancement**: Individually process vocals, drums, bass, and other instruments
 - **Audio Quality Controls**:
@@ -50,31 +50,21 @@ cd ComfyUI-Audio-Quality-Enhancer
 pip install -r requirements.txt
 ```
 
-### 3. Install SoX (Required for Audio Effects)
+### 3. SoX (Required for Audio Effects)
 
-#### Windows
+SoX is **embedded automatically** — no separate installation required.
 
-1. Download SoX for Windows from the [official SourceForge page](https://sourceforge.net/projects/sox/files/sox/14.4.2/)
-   - Download the `.exe` installer (e.g., `sox-14.4.2-win32.exe`)
+- **Windows**: SoX is auto-downloaded into the extension's `bin/` directory the first time an Audio Effects or Fade node runs. No manual action needed.
+- **Linux/WSL**: Install via package manager:
+  ```bash
+  sudo apt-get update && sudo apt-get install sox
+  ```
+- **macOS**: Install via Homebrew:
+  ```bash
+  brew install sox
+  ```
 
-2. Run the installer:
-   - Follow the installation prompts
-   - **Important**: Note the installation directory (default is usually `C:\Program Files (x86)\sox-14-4-2\`)
-   
-3. No need to add to PATH - the extension uses the direct path to SoX
-
-#### WSL 2 (Ubuntu)
-
-```bash
-sudo apt-get update
-sudo apt-get install sox
-```
-
-#### macOS
-
-```bash
-brew install sox
-```
+If you installed via **ComfyUI-Manager**, SoX is downloaded during the install step automatically (Windows).
 
 ### 4. Optional: Install Advanced Audio Libraries
 
@@ -100,7 +90,6 @@ Applies high-quality audio processing to any audio input.
 - `audio`: Audio data from any audio-generating node
 - `pitch_shift`: Semitone adjustment (-12 to +12)
 - `speed_factor`: Playback speed modifier (0.5x to 2.0x)
-- `sox_path` (optional): Custom path to SoX executable
 - `gain_db` (optional): Volume adjustment in decibels
 - `use_limiter` (optional): Enable/disable limiter for positive gain
 - `normalize_audio` (optional): Enable/disable audio normalization
@@ -229,7 +218,7 @@ For maximum quality, you can chain both nodes:
 1. Add any audio-generating node
 2. Add "AI Audio Enhancer Pro" for quality enhancement
 3. Add "AI Audio Effects" for creative effects
-4. Connect in sequence: Audio Source → Enhancer → Effects → Preview
+4. Connect in sequence: Audio Source -> Enhancer -> Effects -> Preview
 5. Use Enhancer for quality improvement and Effects for creative sound design
 
 ## Cross-Platform Compatibility
@@ -240,48 +229,44 @@ This extension has been tested and works on:
 - Linux (including WSL 2 on Windows)
 - macOS
 
-Different environments may require specific setup steps:
-
 ### Windows Notes
-- SoX is automatically located in standard installation directories
-- If installed elsewhere, provide the full path in the effects node
+- SoX is automatically downloaded and embedded in the extension's `bin/` directory
+- No manual installation or PATH configuration required
 - Performance is best with CUDA-enabled GPUs for the Enhancer node
 
-### WSL 2 Notes
-- SoX is automatically located through the system PATH
+### Linux / WSL 2 Notes
+- Install SoX via `sudo apt-get install sox` — it is detected automatically from the system PATH
 - Enhancer node works well with CPU mode if CUDA isn't available in WSL
 
 ### macOS Notes
-- Install SoX via Homebrew for best compatibility
+- Install SoX via `brew install sox` — it is detected automatically from the system PATH
 - Enhancer node defaults to CPU mode
 
-## SoX Troubleshooting
+## Troubleshooting
 
-### Windows
+### SoX Not Found
 
-If you encounter issues with SoX:
+If the Audio Effects or Fade node reports that SoX was not found:
 
-1. Verify the SoX path in the "AI Audio Effects" node:
-   - Default: `C:\Program Files (x86)\sox-14-4-2\sox.exe`
-   - If your installation is in a different location, provide the full path to sox.exe
+- **Windows**: The auto-download may have failed (e.g. no internet). Run the install script manually:
+  ```bash
+  python install.py
+  ```
+  Or manually download `sox-14.4.2-win32.zip` from [SourceForge](https://sourceforge.net/projects/sox/files/sox/14.4.2/) and extract it into the `bin/` folder inside this extension so that `bin/sox-14.4.2/sox.exe` exists.
 
-2. Check if SoX is installed correctly:
-   - Open Command Prompt
-   - Run `"C:\Program Files (x86)\sox-14-4-2\sox.exe" --version`
-   - If you get an error, reinstall SoX
+- **Linux/WSL**: Verify SoX is installed:
+  ```bash
+  sox --version
+  # If not installed:
+  sudo apt-get update && sudo apt-get install sox
+  ```
 
-### WSL 2 (Ubuntu)
-
-1. Verify SoX installation:
-   ```bash
-   sox --version
-   ```
-
-2. If SoX is not found, install it:
-   ```bash
-   sudo apt-get update
-   sudo apt-get install sox
-   ```
+- **macOS**: Verify SoX is installed:
+  ```bash
+  sox --version
+  # If not installed:
+  brew install sox
+  ```
 
 ## Enhanced Audio Processing
 
