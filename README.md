@@ -11,7 +11,7 @@ This extension adds advanced audio processing capabilities to ComfyUI with profe
 
 ## Features
 
-### SlopAudio Effects Node
+### SloppyAudio Effects Node
 - **Pitch Shifting**: Adjust pitch from -12 to +12 semitones
 - **Speed Adjustment**: Modify playback speed from 0.5x to 2.0x
 - **Volume Control**: Professional gain control with anti-clipping protection
@@ -20,7 +20,7 @@ This extension adds advanced audio processing capabilities to ComfyUI with profe
 - **Echo**: Configurable delay and decay for spatial effects
 - **Cross-platform**: Works on Windows, Linux/WSL, and macOS using SoX
 
-### SlopAudio Enhancer Node
+### SloppyAudio Enhancer Node
 - **Source Separation**: Powered by Demucs to enhance specific audio elements
 - **Targeted Enhancement**: Individually process vocals, drums, bass, and other instruments
 - **Audio Quality Controls**:
@@ -70,7 +70,7 @@ After installing all required components, restart ComfyUI to load the extension.
 
 ## Nodes
 
-### SlopAudio Effects
+### SloppyAudio Effects
 
 Applies high-quality audio processing to any audio input.
 
@@ -91,7 +91,7 @@ Applies high-quality audio processing to any audio input.
 **Outputs:**
 - `audio`: Processed audio data
 
-### SlopAudio Enhancer
+### SloppyAudio Enhancer
 
 Enhances audio quality using source separation and targeted processing.
 
@@ -186,7 +186,7 @@ Here are some effective enhancement combinations:
 ### Basic Audio Processing
 
 1. Add any audio-generating node (TTS, audio loader, etc.)
-2. Add "SlopAudio Effects"
+2. Add "SloppyAudio Effects"
 3. Connect the audio output to the effects node input
 4. Adjust pitch, speed, reverb, or other settings
 5. Connect to "Preview Audio" node to hear the result
@@ -194,7 +194,7 @@ Here are some effective enhancement combinations:
 ### Advanced Audio Enhancement
 
 1. Add any audio-generating node
-2. Add "SlopAudio Enhancer"
+2. Add "SloppyAudio Enhancer"
 3. Enable source separation for best quality
 4. Adjust enhancement parameters for vocals, bass, etc.
 5. Connect to "Preview Audio" node
@@ -204,8 +204,8 @@ Here are some effective enhancement combinations:
 For maximum quality, you can chain both nodes:
 
 1. Add any audio-generating node
-2. Add "SlopAudio Enhancer" for quality enhancement
-3. Add "SlopAudio Effects" for creative effects
+2. Add "SloppyAudio Enhancer" for quality enhancement
+3. Add "SloppyAudio Effects" for creative effects
 4. Connect in sequence: Audio Source -> Enhancer -> Effects -> Preview
 5. Use Enhancer for quality improvement and Effects for creative sound design
 
@@ -244,7 +244,7 @@ bin/
 
 ## Enhanced Audio Processing
 
-The SlopAudio Enhancer node uses several techniques for high-quality processing:
+The SloppyAudio Enhancer node uses several techniques for high-quality processing:
 
 - **Source Separation**: Uses Demucs to separate audio into stems for targeted processing
 - **Transient Enhancement**: Improves attack and clarity of percussion and rhythmic elements

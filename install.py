@@ -1,5 +1,5 @@
 """
-Installation script for ComfyUI-SlopAudio.
+Installation script for ComfyUI-SloppyAudio.
 Called automatically by ComfyUI-Manager during installation.
 """
 

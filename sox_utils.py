@@ -1,5 +1,5 @@
 """
-SoX binary management for ComfyUI-SlopAudio.
+SoX binary management for ComfyUI-SloppyAudio.
 Static SoX binaries are shipped in bin/{platform}/ for Windows, Linux, and macOS.
 No downloads — everything is embedded.
 """
