@@ -52,19 +52,7 @@ pip install -r requirements.txt
 
 ### 3. SoX (Required for Audio Effects)
 
-SoX is **embedded automatically** — no separate installation required.
-
-- **Windows**: SoX is auto-downloaded into the extension's `bin/` directory the first time an Audio Effects or Fade node runs. No manual action needed.
-- **Linux/WSL**: Install via package manager:
-  ```bash
-  sudo apt-get update && sudo apt-get install sox
-  ```
-- **macOS**: Install via Homebrew:
-  ```bash
-  brew install sox
-  ```
-
-If you installed via **ComfyUI-Manager**, SoX is downloaded during the install step automatically (Windows).
+SoX static binaries are **bundled** with this extension for Windows, Linux, and macOS. No separate installation required — it works out of the box on all platforms.
 
 ### 4. Optional: Install Advanced Audio Libraries
 
@@ -230,43 +218,29 @@ This extension has been tested and works on:
 - macOS
 
 ### Windows Notes
-- SoX is automatically downloaded and embedded in the extension's `bin/` directory
-- No manual installation or PATH configuration required
+- SoX binary is bundled in `bin/win32/` — no installation or PATH needed
 - Performance is best with CUDA-enabled GPUs for the Enhancer node
 
 ### Linux / WSL 2 Notes
-- Install SoX via `sudo apt-get install sox` — it is detected automatically from the system PATH
+- SoX static binary is bundled in `bin/linux/` with required shared libraries
 - Enhancer node works well with CPU mode if CUDA isn't available in WSL
 
 ### macOS Notes
-- Install SoX via `brew install sox` — it is detected automatically from the system PATH
+- SoX binary is bundled in `bin/darwin/`
 - Enhancer node defaults to CPU mode
 
 ## Troubleshooting
 
 ### SoX Not Found
 
-If the Audio Effects or Fade node reports that SoX was not found:
+If the Audio Effects or Fade node reports that the embedded SoX binary was not found, re-clone the repository to restore the `bin/` directory. The expected layout is:
 
-- **Windows**: The auto-download may have failed (e.g. no internet). Run the install script manually:
-  ```bash
-  python install.py
-  ```
-  Or manually download `sox-14.4.2-win32.zip` from [SourceForge](https://sourceforge.net/projects/sox/files/sox/14.4.2/) and extract it into the `bin/` folder inside this extension so that `bin/sox-14.4.2/sox.exe` exists.
-
-- **Linux/WSL**: Verify SoX is installed:
-  ```bash
-  sox --version
-  # If not installed:
-  sudo apt-get update && sudo apt-get install sox
-  ```
-
-- **macOS**: Verify SoX is installed:
-  ```bash
-  sox --version
-  # If not installed:
-  brew install sox
-  ```
+```
+bin/
+  win32/sox.exe   (+ DLLs)
+  linux/sox       (+ .so libs)
+  darwin/sox
+```
 
 ## Enhanced Audio Processing
 

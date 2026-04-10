@@ -16,13 +16,5 @@ def install_requirements():
         )
 
 
-def install_sox():
-    sys.path.insert(0, os.path.dirname(__file__))
-    from sox_utils import download_sox
-
-    download_sox()
-
-
 if __name__ == "__main__":
     install_requirements()
-    install_sox()

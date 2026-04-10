@@ -1,13 +1,12 @@
-# Embedded SoX binaries (auto-downloaded)
-bin/
-
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
 
-# C extensions
+# C extensions (exclude embedded SoX shared libs in bin/)
 *.so
+!bin/**/*.so
+!bin/**/*.so.*
 
 # Distribution / packaging
 .Python
