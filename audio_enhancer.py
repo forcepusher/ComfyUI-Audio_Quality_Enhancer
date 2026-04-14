@@ -61,6 +61,8 @@ class AudioQualityEnhancer:
                                  "display": "slider", "label": "Vocals (- reduce / + enhance)"}),
                 "drums_enhance": ("FLOAT", {"default": 0.0, "min": -1.0, "max": 1.0, "step": 0.05, 
                                "display": "slider", "label": "Drums (- reduce / + enhance)"}),
+                "cymbals_enhance": ("FLOAT", {"default": 0.0, "min": -1.0, "max": 1.0, "step": 0.05, 
+                                 "display": "slider", "label": "Cymbals/Hi-Hats (- reduce / + enhance)"}),
                 "bass_enhance": ("FLOAT", {"default": 0.0, "min": -1.0, "max": 1.0, "step": 0.05, 
                               "display": "slider", "label": "Bass (- reduce / + enhance)"}),
                 "other_enhance": ("FLOAT", {"default": 0.0, "min": -1.0, "max": 1.0, "step": 0.05, 
@@ -133,6 +135,7 @@ class AudioQualityEnhancer:
                      use_source_separation: bool = True, demucs_model: str = "htdemucs",
                      device: str = "cuda",
                      vocals_enhance: float = 0.0, drums_enhance: float = 0.0,
+                     cymbals_enhance: float = 0.0,
                      bass_enhance: float = 0.0, other_enhance: float = 0.0,
                      clarity: float = 0.4, dynamics: float = 0.3, 
                      warmth: float = 0.2, air: float = 0.3,
@@ -205,6 +208,7 @@ class AudioQualityEnhancer:
             # Scale stem controls by master level (preserves sign for reduce/enhance)
             vocals_enhance *= enhancement_level
             drums_enhance *= enhancement_level
+            cymbals_enhance *= enhancement_level
             bass_enhance *= enhancement_level
             other_enhance *= enhancement_level
             
@@ -223,6 +227,7 @@ class AudioQualityEnhancer:
                     device=device,
                     vocals_level=vocals_enhance,
                     drums_level=drums_enhance,
+                    cymbals_level=cymbals_enhance,
                     bass_level=bass_enhance,
                     other_level=other_enhance,
                     clarity=clarity,
@@ -302,8 +307,9 @@ class AudioQualityEnhancer:
     
     def _process_with_demucs(self, audio, sample_rate, 
                             model_name="htdemucs", device="cuda",
-                            vocals_level=0.5, drums_level=0.6, 
-                            bass_level=0.4, other_level=0.4,
+                            vocals_level=0.0, drums_level=0.0,
+                            cymbals_level=0.0,
+                            bass_level=0.0, other_level=0.0,
                             clarity=0.4, dynamics=0.3,
                             warmth=0.2, air=0.3):
         """
@@ -394,7 +400,8 @@ class AudioQualityEnhancer:
                     sample_rate, 
                     drums_level, 
                     dynamics, 
-                    air
+                    air,
+                    cymbals_level=cymbals_level
                 )
             
             # Process bass if present
@@ -508,54 +515,79 @@ class AudioQualityEnhancer:
         
         return result
     
-    def _enhance_drums(self, drums, sample_rate, level=0.0, dynamics=0.3, air=0.3):
+    def _enhance_drums(self, drums, sample_rate, level=0.0, dynamics=0.3, air=0.3,
+                       cymbals_level=0.0):
         """
         Enhance or reduce drums. Negative level attenuates, positive enhances.
+        cymbals_level independently controls high-frequency drum content (cymbals, hi-hats)
+        via an ~8kHz crossover split from the drums stem.
         """
-        if abs(level) < 0.01:
+        no_drum_change = abs(level) < 0.01
+        no_cymbal_change = abs(cymbals_level) < 0.01
+        
+        if no_drum_change and no_cymbal_change:
             return drums
             
         result = drums.copy()
         
-        if level < 0:
-            attenuation = max(0.0, 1.0 + level)
-            return result * attenuation
+        # Split drums into low (kick/snare body) and high (cymbals/hats) bands
+        CROSSOVER_HZ = 8000
+        nyquist = sample_rate / 2
+        if CROSSOVER_HZ >= nyquist:
+            crossover_norm = 0.95
+        else:
+            crossover_norm = CROSSOVER_HZ / nyquist
         
-        # Transient enhancement
-        # Calculate the envelope
-        for ch in range(result.shape[0]):
-            # Fast envelope follower
-            env = np.abs(result[ch])
-            
-            # Smooth it slightly
-            win_size = int(0.01 * sample_rate)  # 10ms window
-            if win_size > 1:
-                env = np.convolve(env, np.ones(win_size)/win_size, mode='same')
-            
-            # Calculate the derivative to find transients
-            env_diff = np.zeros_like(env)
-            env_diff[1:] = env[1:] - env[:-1]
-            
-            # Create a transient mask
-            transient_mask = env_diff > 0.01  # Positive slope above threshold
-            
-            # Apply transient boost
-            result[ch, transient_mask] = result[ch, transient_mask] * (1.0 + level * 0.7)
+        xover_sos = signal.butter(4, crossover_norm, output='sos')
+        low_drums = signal.sosfilt(xover_sos, result, axis=-1)
+        high_drums = result - low_drums
         
-        # Add high-end air to cymbals
-        if air > 0 and PEDALBOARD_AVAILABLE:
+        # --- Process low drums (kick, snare, toms) ---
+        if not no_drum_change:
+            if level < 0:
+                low_drums *= max(0.0, 1.0 + level)
+            else:
+                for ch in range(low_drums.shape[0]):
+                    env = np.abs(low_drums[ch])
+                    win_size = int(0.01 * sample_rate)
+                    if win_size > 1:
+                        env = np.convolve(env, np.ones(win_size)/win_size, mode='same')
+                    env_diff = np.zeros_like(env)
+                    env_diff[1:] = env[1:] - env[:-1]
+                    transient_mask = env_diff > 0.01
+                    low_drums[ch, transient_mask] *= (1.0 + level * 0.7)
+        
+        # --- Process high drums (cymbals, hi-hats) ---
+        if not no_cymbal_change:
+            if cymbals_level < 0:
+                high_drums *= max(0.0, 1.0 + cymbals_level)
+            else:
+                if PEDALBOARD_AVAILABLE:
+                    board = Pedalboard([
+                        HighShelfFilter(
+                            cutoff_frequency_hz=10000,
+                            gain_db=cymbals_level * 6,
+                            q=0.7
+                        )
+                    ])
+                    for ch in range(high_drums.shape[0]):
+                        high_drums[ch] = board.process(high_drums[ch], sample_rate=sample_rate)
+                else:
+                    high_drums *= (1.0 + cymbals_level * 0.5)
+        
+        # Air boost on high band (only when drums are being enhanced, not reduced)
+        if air > 0 and level > 0 and PEDALBOARD_AVAILABLE:
             board = Pedalboard([
                 HighShelfFilter(
                     cutoff_frequency_hz=10000,
-                    gain_db=air * 6,  # Up to 6dB boost
+                    gain_db=air * 6,
                     q=0.7
                 )
             ])
-            
-            for ch in range(result.shape[0]):
-                result[ch] = board.process(result[ch], sample_rate=sample_rate)
+            for ch in range(high_drums.shape[0]):
+                high_drums[ch] = board.process(high_drums[ch], sample_rate=sample_rate)
         
-        return result
+        return low_drums + high_drums
     
     def _enhance_bass(self, bass, sample_rate, level=0.0, warmth=0.2):
         """
